@@ -1,0 +1,38 @@
+*.class
+*.log
+
+# sbt specific
+.cache
+.classpath
+.target
+dist/*
+target/
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+
+# Scala-IDE specific
+.scala_dependencies
+.project
+.settings
+
+# IntelliJ IDEA specific
+.idea
+
+# samples
+samples/*/logs
+samples/*/project/project
+samples/*/project/target
+samples/*/target
+samples/*/tmp
+samples/*/.history
+samples/*/dist
+samples/*/.idea
+samples/*/*.iml
+samples/*/out
+samples/*/.idea_modules
+samples/*/.classpath
+samples/*/.project
+samples/*/RUNNING_PID
+samples/*/.settings
