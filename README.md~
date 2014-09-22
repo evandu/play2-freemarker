@@ -10,11 +10,11 @@ This plugin makes [freemarker](http://freemarker.org/) a first-class citizen of 
 install [sbt(sbt 0.13.5)](http://www.scala-sbt.org/) 
 
 ```
-$ cd play2-freemarker
+cd play2-freemarker
 
-$ sbt
+sbt
 
- > gen-eclipse
+gen-eclipse
 
 ```
 
