@@ -63,7 +63,7 @@ case class JSONObjectModel(json: JsValue, wrapper: ObjectWrapper) extends Templa
   def isEmpty = json == null
   @throws(classOf[TemplateModelException])
   def get(key: String): TemplateModel = json \ key match {
-    case undefined: JsUndefined => wrapper.wrap(undefined)
+    case undefined: JsUndefined => wrapper.wrap(null)
     case JsNull => wrapper.wrap(null)
     case array: JsArray => wrapper.wrap(array.value)
     case str: JsString => new SimpleScalar(str.value)
