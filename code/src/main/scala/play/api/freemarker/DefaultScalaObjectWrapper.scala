@@ -1,8 +1,7 @@
-package play.api.libs.freemarker
+package play.api.freemarker
 
-import java.lang.reflect.{ Method, Modifier }
+import java.lang.reflect.Method
 
-import freemarker.ext.beans.{ NumberModel, BooleanModel, StringModel, BeansWrapper }
 import freemarker.template._
 import play.api.libs.json._
 

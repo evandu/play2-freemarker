@@ -1,17 +1,17 @@
-package play.api.libs.freemarker.test
+package play.api.freemarker
 
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+
 import freemarker.cache.StringTemplateLoader
-import freemarker.template.{Version, Configuration}
+import freemarker.template.{Configuration, Version}
 import org.specs2.mutable._
 import play.api.libs.iteratee.{Enumeratee, Iteratee}
-import play.api.libs.freemarker.{ScalaObjectWrapper, FreeMarkerTemplate}
 import play.api.libs.json.Json
 import play.api.test.FakeApplication
 import play.api.test.Helpers._
+
 import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 /**
  * Created by evan on 14-8-28.

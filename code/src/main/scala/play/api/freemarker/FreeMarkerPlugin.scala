@@ -1,12 +1,14 @@
-package play.api.libs.freemarker
+package play.api.freemarker
+
+import java.util.Locale
 
 import com.typesafe.config.ConfigRenderOptions
-import freemarker.template.{Configuration, Version, TemplateExceptionHandler}
-import play.api.{Application, Plugin}
-import play.api.libs.iteratee.{Enumerator, Concurrent}
+import freemarker.template.{Configuration, TemplateExceptionHandler, Version}
+import play.api.libs.iteratee.{Concurrent, Enumerator}
 import play.api.libs.json.Json
+import play.api.{Application, Plugin}
+
 import scala.concurrent.ExecutionContext
-import java.util.Locale
 
 /**
  * Created by evan on 14-8-28.

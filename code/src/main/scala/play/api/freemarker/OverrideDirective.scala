@@ -1,10 +1,10 @@
-package play.api.libs.freemarker
+package play.api.freemarker
 
 import java.io.Writer
 import java.util
 
 import freemarker.core.Environment
-import freemarker.template.{TemplateDirectiveBody, TemplateModel, TemplateDirectiveModel}
+import freemarker.template.{TemplateDirectiveBody, TemplateDirectiveModel, TemplateModel}
 import org.apache.commons.lang3.StringUtils
 
 /**
