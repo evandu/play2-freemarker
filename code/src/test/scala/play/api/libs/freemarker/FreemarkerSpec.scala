@@ -1,13 +1,12 @@
 package play.api.libs.freemarker.test
 
-import java.io.File
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import freemarker.cache.StringTemplateLoader
-import freemarker.template.{TemplateExceptionHandler, Version, Configuration}
+import freemarker.template.{Version, Configuration}
 import org.specs2.mutable._
 import play.api.libs.iteratee.{Enumeratee, Iteratee}
-import play.api.libs.freemarker.{FreeMarkerConfiguration, ScalaObjectWrapper, FreeMarkerTemplate}
+import play.api.libs.freemarker.{ScalaObjectWrapper, FreeMarkerTemplate}
 import play.api.libs.json.Json
 import play.api.test.FakeApplication
 import play.api.test.Helpers._
@@ -24,24 +23,29 @@ case class Child(name:String,age:Int)
 
 class FreemarkerSpec extends  Specification  {
 
-  trait DefFreeMarkerConfiguration extends FreeMarkerConfiguration{
+  val sharedVariable: Map[String, String] = Map("staticUrl"->"http://static.jje.com")
+  val templateLoader = new StringTemplateLoader
+  templateLoader.putTemplate("test.ftl",
+    """
+      |hello name=${name} age=${age}, title=${title}
+      |sharedVariable = ${staticUrl}
+      |<#list children  as c>
+      |<li>name = ${c.name} - age=${c.age}</li>
+      |</#list>
+    """.stripMargin
+  )
 
-    val sharedVariable: Map[String, String] = Map("staticUrl"->"http://static.jje.com")
-    val templateLoader = new StringTemplateLoader
-    templateLoader.putTemplate("test.ftl",
-      """
-        |hello name=${name} age=${age}, title=${title}
-        |sharedVariable = ${staticUrl}
-        |<#list children  as c>
-        |<li>name = ${c.name} - age=${c.age}</li>
-        |</#list>
-      """.stripMargin
-    )
-  }
    implicit  val loc = Locale.getDefault
-   object DefFreeMarkerTemplate extends FreeMarkerTemplate with DefFreeMarkerConfiguration{
-     sharedVariable.map(f => cfg.setSharedVariable(f._1, f._2))
-     cfg.setTemplateLoader(templateLoader)
+   object DefFreeMarkerTemplate {
+     def apply() ={
+       val cfg = new Configuration()
+        cfg.setTemplateLoader(templateLoader)
+       cfg.setIncompatibleImprovements(new Version(2, 3, 20))
+       sharedVariable.map(f=>cfg.setSharedVariable(f._1, f._2))
+       cfg.setObjectWrapper(ScalaObjectWrapper)
+       cfg.setDefaultEncoding("UTF-8")
+       new FreeMarkerTemplate(cfg)
+     }
    }
 
   "Freemarker Application put scala object" should {
@@ -51,7 +55,7 @@ class FreemarkerSpec extends  Specification  {
             val toStr: Enumeratee[Array[Byte], String] = Enumeratee.map[Array[Byte]] { s => new String(s, "UTF-8")}
             Await.result[String](
               Iteratee.flatten(
-                DefFreeMarkerTemplate.render("test.ftl")(Parent("Parent", 35, "teacher", List(Child("child1", 5), Child("child2", 6)))) |>> toStr &>> strings
+                DefFreeMarkerTemplate().render("test.ftl",Parent("Parent", 35, "teacher", List(Child("child1", 5), Child("child2", 6)))) |>> toStr &>> strings
               ).run ,  Duration(2,TimeUnit.SECONDS)
 
             ) must containing(
@@ -75,7 +79,7 @@ class FreemarkerSpec extends  Specification  {
         val toStr: Enumeratee[Array[Byte], String] = Enumeratee.map[Array[Byte]] { s => new String(s, "UTF-8")}
         Await.result[String](
           Iteratee.flatten(
-            DefFreeMarkerTemplate.render("test.ftl")(
+            DefFreeMarkerTemplate().render("test.ftl",
               Json.parse("""
                    |{
                    |"name":"Parent",
