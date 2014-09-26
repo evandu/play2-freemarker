@@ -2,9 +2,10 @@ package play.api.freemarker
 
 import java.lang.reflect.Method
 import java.util
-
+import java.util.Date
 import freemarker.ext.beans.BeansWrapper
 import freemarker.template._
+import org.joda.time.DateTime
 import play.api.libs.json._
 
 /**
@@ -14,23 +15,24 @@ import play.api.libs.json._
 sealed trait TemplateScalaModel extends TemplateHashModel with TemplateScalarModel
 
 
-case class ScalaMapModel[T](map: Map[String,T], wrapper: ObjectWrapper) extends TemplateScalaModel {
+case class ScalaMapModel[T](map: Map[String,T], wrapper: BeansWrapper) extends TemplateScalaModel {
 
   def isEmpty = map.isEmpty
 
   def get(key: String): TemplateModel = wrapper.wrap(map.getOrElse(key, null))
 
   def getAsString = if (isEmpty) null else map.toString
+
 }
 
-case class ScalaListModel(data: Seq[Any], wrapper: ObjectWrapper) extends TemplateSequenceModel {
+case class ScalaListModel(data: Seq[Any], wrapper: BeansWrapper) extends TemplateSequenceModel {
   def size = data.size
   def get(idx: Int) = wrapper.wrap(data(idx))
 }
 
 
 
-case class CaseClassModel(obj: Any, wrapper: BeansWrapper) extends TemplateScalaModel {
+case class CaseClassModel(obj: Any, wrapper: BeansWrapper) extends TemplateScalaModel  {
 
   def getMethods(clazz: Class[_], methodName: String): List[Method] = clazz.getMethods filter (_.getName equals methodName) toList match {
     case Nil if clazz != classOf[Object] => getMethods(clazz.getSuperclass, methodName)
@@ -44,7 +46,6 @@ case class CaseClassModel(obj: Any, wrapper: BeansWrapper) extends TemplateScala
       case Nil => wrapper.wrap(null)
       case List(head) if head.getParameterTypes.length == 0 => getValue(head)
       case List(head)=>
-        println(s"...................................${methodName}")
         ScalaSimpleMethodModel(obj, head.getName, head.getParameterTypes, wrapper)
       case methods @head::tail => ScalaOverloadedMethodModel(obj, methods, wrapper)
     }
@@ -64,7 +65,7 @@ case class CaseClassModel(obj: Any, wrapper: BeansWrapper) extends TemplateScala
 
 }
 
-case class JSONObjectModel(json: JsValue, wrapper: ObjectWrapper) extends TemplateScalaModel {
+case class JSONObjectModel(json: JsValue, wrapper: BeansWrapper) extends TemplateScalaModel {
   def isEmpty = json == null
   @throws(classOf[TemplateModelException])
   def get(key: String): TemplateModel = json \ key match {
@@ -126,11 +127,19 @@ case class ScalaOverloadedMethodModel(obj: Any, methods: List[Method], wrapper: 
 object ScalaObjectWrapper extends DefaultObjectWrapper {
   override def wrap(target: scala.Any) =
     target match {
+      case model: TemplateModel => model
       case map: Map[String,_]=> ScalaMapModel(map, this)
       case list: Seq[Any] => ScalaListModel(list, this)
       case js: JsValue => JSONObjectModel(js, this)
-      case None => wrap(null)
+      case None => new SimpleScalar("") //wrap(null)
       case Some(data) => wrap(data)
+      case str: String => new SimpleScalar(str)
+      case date: Date => new SimpleDate(date,0)
+      case date: java.sql.Date => new SimpleDate(date)
+      case date: java.sql.Timestamp => new SimpleDate(date)
+      case date:DateTime => new SimpleDate(new Date(date.getMillis),0)
+      case num: Number => new SimpleNumber(num)
+      case bool: Boolean => if (bool) TemplateBooleanModel.TRUE else TemplateBooleanModel.FALSE
       case data: Any => CaseClassModel(data, this)
       case obj => super.wrap(obj)
     }

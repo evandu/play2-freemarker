@@ -1,6 +1,6 @@
 package play.api.freemarker
 
-import java.util.{Date, Locale}
+import java.util.{Calendar, Locale}
 import java.util.concurrent.TimeUnit
 
 import freemarker.cache.StringTemplateLoader
@@ -11,6 +11,7 @@ import play.api.libs.iteratee.{Enumeratee, Iteratee}
 import play.api.libs.json.Json
 import play.api.test.FakeApplication
 import play.api.test.Helpers._
+import specs2.run
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -37,17 +38,22 @@ class FreemarkerSpec extends  Specification  {
   )
   templateLoader.putTemplate("date.ftl",
     """
-      |hello date now=${date?string("yyyy-MM-dd")} datetime now ${datetime?string}
+      |hello date now=${date?string("yyyy-MM-dd")}
+      |datetime=${datetime?string("yyyy-MM-dd HH:mm:ss")}
+      |boolean=${boolean?string("yes","no")}
+      |num=${num}
+      |double=${double}
+      |f=${f}
+      |b=${b}
     """.stripMargin)
 
   val strings = Iteratee.fold[String, String]("") { (s, e) => s + e}
   val toStr: Enumeratee[Array[Byte], String] = Enumeratee.map[Array[Byte]] { s => new String(s, "UTF-8")}
 
-   implicit  val loc = Locale.getDefault
+   implicit  val loc =  Locale.CHINESE
    object DefFreeMarkerTemplate {
      def apply() ={
        val cfg = new Configuration()
-        cfg.setTemplateLoader(templateLoader)
         cfg.setIncompatibleImprovements(new Version(2, 3, 20))
         sharedVariable.map(f=>cfg.setSharedVariable(f._1, f._2))
         cfg.setObjectWrapper(ScalaObjectWrapper)
@@ -55,6 +61,8 @@ class FreemarkerSpec extends  Specification  {
         cfg.setDateFormat("yyyy-MM-dd")
         cfg.setDateTimeFormat("yyyy-MM-dd HH:mm:ss")
         cfg.setTagSyntax(0)
+        cfg.setLocale(loc)
+         cfg.setTemplateLoader(templateLoader)
         new FreeMarkerTemplate(cfg)
      }
    }
@@ -64,16 +72,32 @@ class FreemarkerSpec extends  Specification  {
   "Freemarker Application put Date and DateTime" should{
     "be render success " in {
       running(FakeApplication()){
+       val c = Calendar.getInstance()
+        c.set(2000, 7, 1, 0, 0, 0)
         Await.result[String](
           Iteratee.flatten(
-            DefFreeMarkerTemplate().render("date.ftl",Map("date"->new Date(), "datetime" -> DateTime.now())) |>> toStr &>> strings
+            DefFreeMarkerTemplate().render(
+            "date.ftl",
+              Map(
+                  "date"->c.getTime(),
+                  "datetime" -> DateTime.parse("2014-08-11"),
+                  "boolean" -> true,
+                  "num" -> 3,
+                  "double" -> 12321.0023d,
+                  "f" -> 123.44,
+                  "b" -> BigDecimal(21321)
+               )
+             ) |>> toStr &>> strings
           ).run ,  Duration(2,TimeUnit.SECONDS)
         ) must containing(
           """
-            |hello name=Parent age=35, title=teacher
-            |sharedVariable = http://static.jje.com
-            |<li>name = child1 - age=5</li>
-            |<li>name = child2 - age=6</li>
+           hello date now=2000-08-01
+            |datetime=2014-08-11 00:00:00
+            |boolean=yes
+            |num=3
+            |double=12,321.002
+            |f=123.44
+            |b=21,321
           """.trim.stripMargin
         )
       }
