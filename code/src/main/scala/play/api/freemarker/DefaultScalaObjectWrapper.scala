@@ -12,7 +12,7 @@ import play.api.libs.json._
 sealed trait TemplateScalaModel extends TemplateHashModel with TemplateScalarModel
 
 
-case class ScalaMapModel(map: Map[String, Any], wrapper: ObjectWrapper) extends TemplateScalaModel {
+case class ScalaMapModel[T](map: Map[String,T], wrapper: ObjectWrapper) extends TemplateScalaModel {
 
   def isEmpty = map.isEmpty
 
@@ -79,7 +79,7 @@ case class JSONObjectModel(json: JsValue, wrapper: ObjectWrapper) extends Templa
 object ScalaObjectWrapper extends DefaultObjectWrapper {
   override def wrap(target: scala.Any) =
     target match {
-      case map: Map[String, Any] => ScalaMapModel(map, this)
+      case map: Map[String,_]=> ScalaMapModel(map, this)
       case list: Seq[Any] => ScalaListModel(list, this)
       case js: JsValue => JSONObjectModel(js, this)
       case None => wrap(null)

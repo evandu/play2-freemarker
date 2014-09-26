@@ -40,11 +40,11 @@ class FreemarkerSpec extends  Specification  {
      def apply() ={
        val cfg = new Configuration()
         cfg.setTemplateLoader(templateLoader)
-       cfg.setIncompatibleImprovements(new Version(2, 3, 20))
-       sharedVariable.map(f=>cfg.setSharedVariable(f._1, f._2))
-       cfg.setObjectWrapper(ScalaObjectWrapper)
-       cfg.setDefaultEncoding("UTF-8")
-       new FreeMarkerTemplate(cfg)
+        cfg.setIncompatibleImprovements(new Version(2, 3, 20))
+        sharedVariable.map(f=>cfg.setSharedVariable(f._1, f._2))
+        cfg.setObjectWrapper(ScalaObjectWrapper)
+        cfg.setDefaultEncoding("UTF-8")
+        new FreeMarkerTemplate(cfg)
      }
    }
 
