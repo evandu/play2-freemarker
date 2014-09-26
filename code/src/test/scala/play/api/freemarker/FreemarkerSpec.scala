@@ -1,10 +1,11 @@
 package play.api.freemarker
 
-import java.util.Locale
+import java.util.{Date, Locale}
 import java.util.concurrent.TimeUnit
 
 import freemarker.cache.StringTemplateLoader
 import freemarker.template.{Configuration, Version}
+import org.joda.time.DateTime
 import org.specs2.mutable._
 import play.api.libs.iteratee.{Enumeratee, Iteratee}
 import play.api.libs.json.Json
@@ -22,9 +23,9 @@ case class Parent(name:String,age:Int,title:String, children :List[Child])
 case class Child(name:String,age:Int)
 
 class FreemarkerSpec extends  Specification  {
-
   val sharedVariable: Map[String, String] = Map("staticUrl"->"http://static.jje.com")
   val templateLoader = new StringTemplateLoader
+
   templateLoader.putTemplate("test.ftl",
     """
       |hello name=${name} age=${age}, title=${title}
@@ -34,6 +35,13 @@ class FreemarkerSpec extends  Specification  {
       |</#list>
     """.stripMargin
   )
+  templateLoader.putTemplate("date.ftl",
+    """
+      |hello date now=${date?string("yyyy-MM-dd")} datetime now ${datetime?string}
+    """.stripMargin)
+
+  val strings = Iteratee.fold[String, String]("") { (s, e) => s + e}
+  val toStr: Enumeratee[Array[Byte], String] = Enumeratee.map[Array[Byte]] { s => new String(s, "UTF-8")}
 
    implicit  val loc = Locale.getDefault
    object DefFreeMarkerTemplate {
@@ -44,20 +52,41 @@ class FreemarkerSpec extends  Specification  {
         sharedVariable.map(f=>cfg.setSharedVariable(f._1, f._2))
         cfg.setObjectWrapper(ScalaObjectWrapper)
         cfg.setDefaultEncoding("UTF-8")
+        cfg.setDateFormat("yyyy-MM-dd")
+        cfg.setDateTimeFormat("yyyy-MM-dd HH:mm:ss")
+        cfg.setTagSyntax(0)
         new FreeMarkerTemplate(cfg)
      }
    }
 
+
+
+  "Freemarker Application put Date and DateTime" should{
+    "be render success " in {
+      running(FakeApplication()){
+        Await.result[String](
+          Iteratee.flatten(
+            DefFreeMarkerTemplate().render("date.ftl",Map("date"->new Date(), "datetime" -> DateTime.now())) |>> toStr &>> strings
+          ).run ,  Duration(2,TimeUnit.SECONDS)
+        ) must containing(
+          """
+            |hello name=Parent age=35, title=teacher
+            |sharedVariable = http://static.jje.com
+            |<li>name = child1 - age=5</li>
+            |<li>name = child2 - age=6</li>
+          """.trim.stripMargin
+        )
+      }
+    }
+  }
+
   "Freemarker Application put scala object" should {
         "be render success " in {
           running(FakeApplication()){
-            val strings = Iteratee.fold[String, String]("") { (s, e) => s + e}
-            val toStr: Enumeratee[Array[Byte], String] = Enumeratee.map[Array[Byte]] { s => new String(s, "UTF-8")}
             Await.result[String](
               Iteratee.flatten(
                 DefFreeMarkerTemplate().render("test.ftl",Parent("Parent", 35, "teacher", List(Child("child1", 5), Child("child2", 6)))) |>> toStr &>> strings
               ).run ,  Duration(2,TimeUnit.SECONDS)
-
             ) must containing(
               """
                 |hello name=Parent age=35, title=teacher
@@ -75,8 +104,6 @@ class FreemarkerSpec extends  Specification  {
   "Freemarker Application put Json Object" should {
     "be render success " in {
       running(FakeApplication()){
-        val strings = Iteratee.fold[String, String]("") { (s, e) => s + e}
-        val toStr: Enumeratee[Array[Byte], String] = Enumeratee.map[Array[Byte]] { s => new String(s, "UTF-8")}
         Await.result[String](
           Iteratee.flatten(
             DefFreeMarkerTemplate().render("test.ftl",

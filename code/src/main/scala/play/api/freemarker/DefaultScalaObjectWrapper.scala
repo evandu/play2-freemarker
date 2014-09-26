@@ -1,7 +1,9 @@
 package play.api.freemarker
 
 import java.lang.reflect.Method
+import java.util
 
+import freemarker.ext.beans.BeansWrapper
 import freemarker.template._
 import play.api.libs.json._
 
@@ -28,7 +30,7 @@ case class ScalaListModel(data: Seq[Any], wrapper: ObjectWrapper) extends Templa
 
 
 
-case class CaseClassModel(obj: Any, wrapper: ObjectWrapper) extends TemplateScalaModel {
+case class CaseClassModel(obj: Any, wrapper: BeansWrapper) extends TemplateScalaModel {
 
   def getMethods(clazz: Class[_], methodName: String): List[Method] = clazz.getMethods filter (_.getName equals methodName) toList match {
     case Nil if clazz != classOf[Object] => getMethods(clazz.getSuperclass, methodName)
@@ -37,10 +39,14 @@ case class CaseClassModel(obj: Any, wrapper: ObjectWrapper) extends TemplateScal
   def isEmpty = obj == null
   @throws(classOf[TemplateModelException])
   def get(methodName: String): TemplateModel = {
+
     getMethods(obj.getClass, methodName) match {
       case Nil => wrapper.wrap(null)
       case List(head) if head.getParameterTypes.length == 0 => getValue(head)
-      case _ => ???
+      case List(head)=>
+        println(s"...................................${methodName}")
+        ScalaSimpleMethodModel(obj, head.getName, head.getParameterTypes, wrapper)
+      case methods @head::tail => ScalaOverloadedMethodModel(obj, methods, wrapper)
     }
   }
   
@@ -74,6 +80,47 @@ case class JSONObjectModel(json: JsValue, wrapper: ObjectWrapper) extends Templa
     case str: JsString => str.value
     case v => v.toString()
   }
+}
+
+case class ScalaSimpleMethodModel(obj: Any, methodName: String, parameterTypes: Array[Class[_]], wrapper: BeansWrapper) extends TemplateMethodModelEx {
+
+  override def exec(args: util.List[_]): Object = {
+    val arguments = parameterTypes.zip(args.asInstanceOf[List[TemplateModel]]) map {c=>
+      c match {
+        case (clazz, model) => wrapper.unwrap(model, clazz)
+      }
+    }
+
+    val method = obj.getClass.getMethod(methodName, parameterTypes: _*)
+    method.invoke(obj, arguments: _*)
+  }
+}
+
+case class ScalaOverloadedMethodModel(obj: Any, methods: List[Method], wrapper: BeansWrapper) extends TemplateMethodModelEx {
+
+  override  def exec(arguments: util.List[_]): Object = {
+
+    val potentialMethods = methods.view.filter(_.getParameterTypes.length == arguments.size).iterator
+    while (potentialMethods.hasNext) {
+      val method = potentialMethods.next
+      try {
+        val typedArguments = getTypedArguments(arguments.asInstanceOf[List[TemplateModel]], method.getParameterTypes)
+        return method.invoke(obj, typedArguments: _*)
+      }
+      catch {
+        case e:Throwable =>
+      }
+    }
+    null
+  }
+
+  def getTypedArguments(arguments: List[TemplateModel], types: Array[Class[_]]): Array[Object] =
+    types.zip(arguments).map { c=>
+      c match {
+        case (clazz, model) => wrapper.unwrap(model, clazz)
+      }
+    }
+
 }
 
 object ScalaObjectWrapper extends DefaultObjectWrapper {
