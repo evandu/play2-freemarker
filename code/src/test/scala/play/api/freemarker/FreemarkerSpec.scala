@@ -7,6 +7,7 @@ import freemarker.cache.StringTemplateLoader
 import freemarker.template.{Configuration, Version}
 import org.joda.time.DateTime
 import org.specs2.mutable._
+import play.api.freemarker.directives.{OverrideDirective, ExtendsDirective, BlockDirective}
 import play.api.libs.iteratee.{Enumeratee, Iteratee}
 import play.api.libs.json.Json
 import play.api.test.FakeApplication
@@ -47,6 +48,38 @@ class FreemarkerSpec extends  Specification  {
       |b=${b}
     """.stripMargin)
 
+  templateLoader.putTemplate("base.ftl",
+    """
+      |<block>
+      |echo "Start"
+      |<@block name="block1">
+      | hello name=${name} age=${age}, title=${title}
+      |</@block>
+      |<@block name="block2">
+      | <!-- from base your css code and import here -->
+      |</@block>
+      |echo "End"
+      |<block>
+    """.stripMargin)
+  templateLoader.putTemplate("extends.ftl",
+    """<@override name="block1">
+      |hello name=${name} age=${age}, title=${title}
+      |sharedVariable = ${staticUrl}
+      |<#list children  as c>
+      |<li>name = ${c.name} - age=${c.age}</li>
+      |</#list>
+      |</@override>
+      |<@override name="block2">
+      |hello name=${name} age=${age}, title=${title}
+      |sharedVariable = ${staticUrl}
+      |<#list children  as c>
+      |<li>name = ${c.name} - age=${c.age}</li>
+      |</#list>
+      |</@override>
+      |<@extends name="base.ftl"/>
+    """.stripMargin)
+
+
   val strings = Iteratee.fold[String, String]("") { (s, e) => s + e}
   val toStr: Enumeratee[Array[Byte], String] = Enumeratee.map[Array[Byte]] { s => new String(s, "UTF-8")}
 
@@ -62,7 +95,10 @@ class FreemarkerSpec extends  Specification  {
         cfg.setDateTimeFormat("yyyy-MM-dd HH:mm:ss")
         cfg.setTagSyntax(0)
         cfg.setLocale(loc)
-         cfg.setTemplateLoader(templateLoader)
+        cfg.setTemplateLoader(templateLoader)
+        cfg.setSharedVariable("block",BlockDirective)
+        cfg.setSharedVariable("override",OverrideDirective)
+        cfg.setSharedVariable("extends",ExtendsDirective)
         new FreeMarkerTemplate(cfg)
      }
    }
@@ -157,6 +193,35 @@ class FreemarkerSpec extends  Specification  {
             |sharedVariable = http://static.jje.com
             |<li>name = child1 - age=5</li>
             |<li>name = child2 - age=6</li>
+          """.trim.stripMargin
+        )
+      }
+
+    }
+  }
+
+
+  "Freemarker Application extends block" should {
+    "be render success " in {
+      running(FakeApplication()){
+        Await.result[String](
+          Iteratee.flatten(
+            DefFreeMarkerTemplate().render("extends.ftl",Parent("Parent", 35, "teacher", List(Child("child1", 5), Child("child2", 6)))) |>> toStr &>> strings
+          ).run ,  Duration(2,TimeUnit.SECONDS)
+        ) must containing(
+          """
+            |<block>
+            |echo "Start"
+            |hello name=Parent age=35, title=teacher
+            |sharedVariable = http://static.jje.com
+            |<li>name = child1 - age=5</li>
+            |<li>name = child2 - age=6</li>
+            |hello name=Parent age=35, title=teacher
+            |sharedVariable = http://static.jje.com
+            |<li>name = child1 - age=5</li>
+            |<li>name = child2 - age=6</li>
+            |echo "End"
+            |<block>
           """.trim.stripMargin
         )
       }

@@ -48,6 +48,7 @@ object Application extends Controller {
    * @param filter Filter applied on computer names
    */
   def list(page: Int, orderBy: Int, filter: String) = Action { implicit request =>
+    Ok.
     Ok(html.list(
       Computer.list(page = page, orderBy = orderBy, filter = ("%"+filter+"%")),
       orderBy, filter
