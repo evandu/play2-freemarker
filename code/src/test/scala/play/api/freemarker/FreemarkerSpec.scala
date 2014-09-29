@@ -79,6 +79,13 @@ class FreemarkerSpec extends  Specification  {
       |<@extends name="base.ftl"/>
     """.stripMargin)
 
+  templateLoader.putTemplate("extends2extends.ftl",
+    """<@override name="block1">
+      | from extends2extends
+      |</@override>
+      |<@extends name="extends.ftl"/>
+    """.stripMargin)
+
 
   val strings = Iteratee.fold[String, String]("") { (s, e) => s + e}
   val toStr: Enumeratee[Array[Byte], String] = Enumeratee.map[Array[Byte]] { s => new String(s, "UTF-8")}
@@ -226,6 +233,30 @@ class FreemarkerSpec extends  Specification  {
         )
       }
 
+    }
+  }
+
+  "Freemarker Application extends extends.ftl" should {
+    "be render success " in {
+      running(FakeApplication()){
+        Await.result[String](
+          Iteratee.flatten(
+            DefFreeMarkerTemplate().render("extends2extends.ftl",Parent("Parent", 35, "teacher", List(Child("child1", 5), Child("child2", 6)))) |>> toStr &>> strings
+          ).run ,  Duration(2,TimeUnit.SECONDS)
+        ) must containing(
+          """
+            |<block>
+            |echo "Start"
+            | from extends2extends
+            |hello name=Parent age=35, title=teacher
+            |sharedVariable = http://static.jje.com
+            |<li>name = child1 - age=5</li>
+            |<li>name = child2 - age=6</li>
+            |echo "End"
+            |<block>
+          """.trim.stripMargin
+        )
+      }
     }
   }
 
