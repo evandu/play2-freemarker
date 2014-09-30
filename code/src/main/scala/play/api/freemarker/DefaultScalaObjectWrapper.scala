@@ -7,7 +7,7 @@ import freemarker.ext.beans.BeansWrapper
 import freemarker.template._
 import org.joda.time.DateTime
 import play.api.libs.json._
-
+import scala.language.postfixOps
 /**
  * Created by evan on 14-8-15.
  */
@@ -15,7 +15,7 @@ import play.api.libs.json._
 sealed trait TemplateScalaModel extends TemplateHashModel with TemplateScalarModel
 
 
-case class ScalaMapModel[T](map: Map[String,T], wrapper: BeansWrapper) extends TemplateScalaModel {
+case class ScalaMapModel[V](map: Map[String,V], wrapper: BeansWrapper) extends TemplateScalaModel {
 
   def isEmpty = map.isEmpty
 
@@ -128,15 +128,15 @@ object ScalaObjectWrapper extends DefaultObjectWrapper {
   override def wrap(target: scala.Any) =
     target match {
       case model: TemplateModel => model
-      case map: Map[String,_]=> ScalaMapModel(map, this)
+      case map: Map[_,_]=> ScalaMapModel(map.asInstanceOf[Map[String,_]], this)
       case list: Seq[Any] => ScalaListModel(list, this)
       case js: JsValue => JSONObjectModel(js, this)
       case None => new SimpleScalar("") //wrap(null)
       case Some(data) => wrap(data)
       case str: String => new SimpleScalar(str)
-      case date: Date => new SimpleDate(date,0)
       case date: java.sql.Date => new SimpleDate(date)
       case date: java.sql.Timestamp => new SimpleDate(date)
+      case date: Date => new SimpleDate(date,0)
       case date:DateTime => new SimpleDate(new Date(date.getMillis),0)
       case num: Number => new SimpleNumber(num)
       case bool: Boolean => if (bool) TemplateBooleanModel.TRUE else TemplateBooleanModel.FALSE
