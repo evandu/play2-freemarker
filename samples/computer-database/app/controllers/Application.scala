@@ -1,6 +1,7 @@
 package controllers
 
 import play.api._
+import play.api.freemarker.FreeMarker
 import play.api.mvc._
 import play.api.data._
 import play.api.data.Forms._
@@ -9,12 +10,13 @@ import anorm._
 
 import views._
 import models._
-
+import play.api.Play.current
+import scala.concurrent.ExecutionContext.Implicits.global
 /**
  * Manage a database of computers
  */
-object Application extends Controller { 
-  
+object Application extends Controller {
+  implicit val loc = java.util.Locale.SIMPLIFIED_CHINESE
   /**
    * This result directly redirect to the application home.
    */
@@ -38,7 +40,12 @@ object Application extends Controller {
   /**
    * Handle default path requests, redirect to computers list
    */  
-  def index = Action { Home }
+  def index = Action {
+    Result(
+      header = ResponseHeader(200, Map("Content-Type"->"text/html")),
+      body = FreeMarker.render("list.ftl",Map("o"->""))
+    )
+  }
   
   /**
    * Display the paginated list of computers.
@@ -48,7 +55,6 @@ object Application extends Controller {
    * @param filter Filter applied on computer names
    */
   def list(page: Int, orderBy: Int, filter: String) = Action { implicit request =>
-    Ok.
     Ok(html.list(
       Computer.list(page = page, orderBy = orderBy, filter = ("%"+filter+"%")),
       orderBy, filter
