@@ -43,7 +43,7 @@ object Application extends Controller {
   def index = Action {
     Result(
       header = ResponseHeader(200, Map("Content-Type"->"text/html")),
-      body = FreeMarker.render("list.ftl",Map("o"->""))
+      body = FreeMarker.render("list.ftl",None)
     )
   }
   

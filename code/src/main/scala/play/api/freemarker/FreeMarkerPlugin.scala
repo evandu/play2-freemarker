@@ -1,12 +1,13 @@
 package play.api.freemarker
-import java.io.File
+import java.io.{IOException, File}
 import java.util.{ Properties, Locale}
-import freemarker.template.{Configuration, Version}
+import freemarker.template.{TemplateException, Configuration, Version}
 import org.apache.commons.lang3.StringUtils
 import play.api.freemarker.directives.{ExtendsDirective, OverrideDirective, BlockDirective}
 import play.api.libs.iteratee.{Concurrent, Enumerator}
 import play.api.{Application, Plugin}
 import scala.concurrent.ExecutionContext
+import play.Logger
 /**
  * Created by evan on 14-8-28.
  */
@@ -18,7 +19,8 @@ object FreeMarker {
       case None => throw new Exception("There is no FreeMarker plugin registered. Make sure at least one FreeMarkerPlugin implementation is enabled.")
     }
   }
-  def render(tpl: String, data: Any)(implicit app: Application,ec: ExecutionContext, loc: Locale):Enumerator[Array[Byte]] ={
+
+  def render(tpl: String, data: Any)(implicit app: Application,ec: ExecutionContext, loc: Locale) ={
     freeMarkerPluginAPI.render(tpl, data)
   }
 }
@@ -29,16 +31,39 @@ trait FreeMarkerTemplateAPI {
 }
 
 class FreeMarkerTemplate(cfg:Configuration) extends FreeMarkerTemplateAPI{
-  override def render(tpl: String, data: Any)(implicit ec: ExecutionContext, loc: Locale) =
-      Concurrent.unicast[Array[Byte]]{ channel =>
-        cfg.getTemplate(tpl, loc).process(data,
-          new java.io.Writer() {
-            override def write(buf: Array[Char], off: Int, len: Int): Unit =
-              channel.push(new String(buf, off, len).getBytes(cfg.getEncoding(loc)))
-            override def flush(): Unit = channel.end
-            override def close(): Unit = channel.eofAndEnd
-          })
+  override def render(tpl: String, data: Any)(implicit ec: ExecutionContext, loc: Locale) ={
+    Concurrent.unicast[Array[Byte]](
+      onStart ={
+        channel =>
+          try{
+            cfg.getTemplate(tpl, loc).process(data,
+              new java.io.Writer() {
+                override def write(buf: Array[Char], off: Int, len: Int): Unit =
+                  channel.push(buf.map(_.toByte))
+                override def flush(): Unit = channel.end
+                override def close(): Unit = channel.eofAndEnd
+              })
+          }catch {
+            case e:TemplateException =>
+              channel.push(e.getFTLInstructionStack.getBytes())
+              Logger.error(s"${tpl},${loc},data = ${data}",e)
+            case e:IOException =>
+              channel.push(e.getMessage.getBytes())
+              Logger.error(s"${tpl},${loc},data = ${data}",e)
+            case e:Throwable =>
+              channel.push(e.getStackTraceString.getBytes())
+              Logger.error(s"${tpl},${loc},data = ${data}",e)
+          }finally {
+            channel.end()
+            channel.eofAndEnd
+          }
+      },
+      onError = {
+        (msg, in) =>
+          Logger.error(msg)
       }
+    )
+  }
 
 }
 trait FreeMarkerPluginAPI extends Plugin {
