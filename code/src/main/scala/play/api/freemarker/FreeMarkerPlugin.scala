@@ -42,21 +42,20 @@ class FreeMarkerTemplate(cfg:Configuration) extends FreeMarkerTemplateAPI{
           try{
             cfg.getTemplate(tpl, loc).process(data,
               new java.io.Writer() {
-                override def write(buf: Array[Char], off: Int, len: Int): Unit =
-                  channel.push(buf.map(_.toByte))
+                override def write(buf: Array[Char], off: Int, len: Int): Unit = channel.push(buf.map(_.toByte))
                 override def flush(): Unit = channel.end
                 override def close(): Unit = channel.eofAndEnd
               })
           }catch {
             case e:TemplateException =>
               channel.push(e.getFTLInstructionStack.getBytes())
-              Logger.error(s"${tpl},${loc},data = ${data}",e)
+              Logger.error(s"${tpl}, ${loc}, data = ${data}",e)
             case e:IOException =>
               channel.push(e.getMessage.getBytes())
-              Logger.error(s"${tpl},${loc},data = ${data}",e)
+              Logger.error(s"${tpl}, ${loc}, data = ${data}",e)
             case e:Throwable =>
               channel.push(e.getStackTraceString.getBytes())
-              Logger.error(s"${tpl},${loc},data = ${data}",e)
+              Logger.error(s"${tpl}, ${loc}, data = ${data}",e)
           }finally {
             channel.end()
             channel.eofAndEnd
