@@ -49,13 +49,13 @@ class FreeMarkerTemplate(cfg:Configuration) extends FreeMarkerTemplateAPI{
           }catch {
             case e:TemplateException =>
               channel.push(e.getFTLInstructionStack.getBytes())
-              Logger.error(s"${tpl}, ${loc}, data = ${data}",e)
+              Logger.error(s"${tpl}, ${loc}, data = ${data}", e)
             case e:IOException =>
               channel.push(e.getMessage.getBytes())
-              Logger.error(s"${tpl}, ${loc}, data = ${data}",e)
+              Logger.error(s"${tpl}, ${loc}, data = ${data}", e)
             case e:Throwable =>
               channel.push(e.getStackTraceString.getBytes())
-              Logger.error(s"${tpl}, ${loc}, data = ${data}",e)
+              Logger.error(s"${tpl}, ${loc}, data = ${data}", e)
           }finally {
             channel.end()
             channel.eofAndEnd
