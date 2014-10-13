@@ -108,6 +108,7 @@ class FreeMarkerPlugin(app:play.api.Application) extends  FreeMarkerPluginAPI {
     cfg.setSharedVariable("extends", ExtendsDirective)
     cfg.setObjectWrapper(ScalaObjectWrapper)
 
+
   }
 
   override lazy val enabled = {
