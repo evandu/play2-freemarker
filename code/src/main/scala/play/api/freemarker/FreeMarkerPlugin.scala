@@ -23,6 +23,10 @@ object FreeMarker {
   def render(tpl: String, data: Any)(implicit app: Application,ec: ExecutionContext, loc: Locale) ={
     freeMarkerPluginAPI.render(tpl, data)
   }
+
+  def render(tpl: String)(implicit app: Application,ec: ExecutionContext, loc: Locale) ={
+    freeMarkerPluginAPI.render(tpl, Map)
+  }
 }
 
 
